@@ -1,0 +1,50 @@
+name: "化石モード"
+description: "縫合線・成長線・条線・骨格構造の輪郭を抽出する"
+
+feature_removal:
+  suppress:
+    - soil_mud              # 母岩・付着した土砂
+    - shooting_background
+    - shadow_hard
+    - specular_highlight     # 鉱物化した表面の光沢反射
+    - deep_shadow_crevice    # 縫合線・破断面の深い陰影を持ち上げて構造を残す
+  preserve_hint:
+    - crack_lines            # 縫合線・破断線
+    - pattern_incision        # 条線・彫刻状構造
+  texture_removal_strength: 0.35   # ceiling(実際の強度は自動最適化で画像ごとに調整)
+  shadow_removal_strength: 0.75
+  highlight_suppression_strength: 0.5    # ceiling
+  shadow_lift_strength: 0.6               # ceiling(縫合線内部の微細構造を優先して保持)
+  background_residue_strength: 0.6        # ceiling(母岩撮影時の背景写り込み除去。陰影補正とは独立)
+
+object_extraction:
+  target: "largest_blob"
+  min_area_ratio: 0.03
+
+vectorization:
+  edge_method: "binary_contour"
+  simplify_tolerance: 1.0     # 縫合線等の細部を残すため単純化を弱める
+  min_contour_points: 5
+  stroke_width: 1.0
+
+# Stage3: エッジ抽出エンジン(モード別調整)
+# 化石は低コントラストな縫合線・条線が多いため、粗いスケールも含めて
+# 見落としを減らし、Cannyの自動閾値もやや緩め、勾配ブーストを強めて
+# 弱いエッジの救済を優先する。
+edge_extraction:
+  canny_sigmas: [0.0, 1.5, 3.0]
+  canny_auto_sigma: 0.4
+  include_color_channels: true
+  gradient_boost_weight: 0.45
+  gradient_clip_percentile: 98.0
+
+line_organization:
+  binarize_threshold: 40
+  gap_close_length: 3
+  gap_close_angles: [0, 45, 90, 135]
+  min_isolated_area: 2
+
+region_extraction:
+  min_area_factor: 20.0
+  simplify_epsilon: 0.8
+  stroke_width: 1.0

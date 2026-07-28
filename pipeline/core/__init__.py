@@ -1,0 +1,1 @@
+# SketchAssist pipeline core package

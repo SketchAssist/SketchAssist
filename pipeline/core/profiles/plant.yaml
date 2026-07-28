@@ -1,0 +1,51 @@
+name: "植物モード"
+description: "葉脈・樹皮・節・花器官・果実表面の構造線を抽出する"
+
+feature_removal:
+  suppress:
+    - background_residue       # 前景境界のにじみ(Stage2で帯状に平滑化して除去)
+    - shadow_hard
+    - foreign_object_pattern   # 昆虫などの異物・斑紋
+  preserve_hint:
+    - leaf_veins
+    - bark_texture
+    - node_boundaries
+  texture_removal_strength: 0.2   # ceiling(植物モードはテクスチャをむしろ残したいので低め。実際の強度は自動最適化)
+  shadow_removal_strength: 0.7
+  background_residue_strength: 0.5   # ceiling(前景境界のにじみ除去。陰影補正とは独立)
+  # 斑紋除去(foreign_object_pattern)は昆虫モードと異なり「植物本体 vs 異物」の
+  # 2値的な分離が目的のため、色分布からの自動推定は行わず小さい固定値を使う。
+  pattern_k: 3
+  pattern_k_min: 2
+  pattern_k_max: 4
+
+object_extraction:
+  target: "largest_blob"
+  min_area_ratio: 0.02
+
+vectorization:
+  edge_method: "canny_adaptive"
+  simplify_tolerance: 1.0            # 葉脈等の細部を残すため簡略化を弱める
+  min_contour_points: 5
+  stroke_width: 0.8
+
+# Stage3: エッジ抽出エンジン(モード別調整)
+# 葉脈・微細毛など非常に細い構造が多いため、より細かいスケールを使い、
+# 自動閾値もやや厳しめにして葉の質感ノイズの拾いすぎを抑える。
+edge_extraction:
+  canny_sigmas: [0.0, 0.5, 1.5]
+  canny_auto_sigma: 0.3
+  include_color_channels: true
+  gradient_boost_weight: 0.3
+  gradient_clip_percentile: 99.0
+
+line_organization:
+  binarize_threshold: 40
+  gap_close_length: 3
+  gap_close_angles: [0, 45, 90, 135]
+  min_isolated_area: 2
+
+region_extraction:
+  min_area_factor: 20.0
+  simplify_epsilon: 0.8
+  stroke_width: 1.0

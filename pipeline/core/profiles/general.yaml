@@ -1,0 +1,37 @@
+# 汎用プロファイル
+# 特定の被写体に特化しない、バランスの取れた初期値。
+# 新しい被写体タイプの起点としても使用できる。
+
+feature_removal:
+  suppress:
+    - shadow_soft
+    - shadow_hard
+  texture_removal_strength: 0.5
+  shadow_removal_strength: 0.5
+  highlight_suppression_strength: 0.0
+  shadow_lift_strength: 0.0
+  local_contrast_strength: 0.0
+  background_residue_strength: 0.5
+  auto_strength: true
+
+edge_extraction:
+  canny_sigmas: [0.0, 1.0, 2.0]
+  canny_auto_sigma: 0.33
+  include_color_channels: true
+  gradient_boost_weight: 0.35
+  gradient_clip_percentile: 99.0
+
+line_organization:
+  binarize_threshold: 40
+  close_gaps: true
+  gap_close_length: 3
+  min_isolated_area: 2
+  bridge: true
+  bridge_max_gap_factor: 40.0
+  bridge_min_score: 0.35
+
+region_extraction:
+  min_area_factor: 20.0
+  hierarchy: true
+  simplify_epsilon: 0.8
+  stroke_width: 1.0

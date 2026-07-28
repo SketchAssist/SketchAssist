@@ -1,0 +1,52 @@
+name: "考古遺物モード"
+description: "割れ目・文様・摩耗・使用痕・形状曲率を抽出する"
+
+feature_removal:
+  suppress:
+    - soil_mud
+    - shooting_background   # 撮影背景の写り込み(Stage2で境界帯を平滑化して除去)
+    - shadow_hard
+    - specular_highlight    # 釉薬・磨面の光沢反射
+    - deep_shadow_crevice   # 刻線・使用痕の溝に残る深い陰影を持ち上げる
+  preserve_hint:
+    - crack_lines
+    - pattern_incision
+    - wear_marks
+  texture_removal_strength: 0.3   # ceiling(実際の強度は自動最適化)
+  shadow_removal_strength: 0.8
+  highlight_suppression_strength: 0.5    # ceiling
+  shadow_lift_strength: 0.65               # ceiling(使用痕・刻線を優先して保持)
+  background_residue_strength: 0.55        # ceiling(撮影背景の写り込み除去。陰影補正とは独立)
+
+object_extraction:
+  target: "largest_blob"
+  min_area_ratio: 0.03
+
+vectorization:
+  edge_method: "binary_contour"
+  simplify_tolerance: 1.2
+  min_contour_points: 5
+  stroke_width: 1.0
+  curvature_analysis: true    # 使用痕・摩耗検出のための曲率解析を有効化
+  curvature_threshold: 0.35
+
+# Stage3: エッジ抽出エンジン(モード別調整)
+# 遺物は刻線・使用痕など中程度のコントラストの線が多い。標準的な設定を
+# 基準としつつ、やや粗いスケールも加えて摩耗面の緩やかな輪郭も拾う。
+edge_extraction:
+  canny_sigmas: [0.0, 1.0, 2.5]
+  canny_auto_sigma: 0.33
+  include_color_channels: true
+  gradient_boost_weight: 0.35
+  gradient_clip_percentile: 99.0
+
+line_organization:
+  binarize_threshold: 40
+  gap_close_length: 3
+  gap_close_angles: [0, 45, 90, 135]
+  min_isolated_area: 2
+
+region_extraction:
+  min_area_factor: 20.0
+  simplify_epsilon: 0.8
+  stroke_width: 1.0

@@ -1,0 +1,68 @@
+name: "昆虫モード"
+description: "昆虫標本の輪郭線図(外形・脚・触角・翅の境界)を抽出する"
+
+feature_removal:
+  suppress:
+    - bark_texture            # 樹皮・枝のテクスチャ
+    - leaf_veins
+    - lichen_moss
+    - shadow_soft
+    - insect_body_pattern      # 昆虫自体の斑紋(輪郭のみ残したいため除去)
+    - specular_highlight       # 外骨格(特に甲虫)の光沢反射
+  texture_removal_strength: 0.7   # ceiling(実際の強度は自動最適化で画像ごとに調整。auto_strength: falseで無効化可)
+  shadow_removal_strength: 0.6
+  highlight_suppression_strength: 0.6   # ceiling(反射スポットの検出量に応じて自動最適化)
+  # 斑紋除去(insect_body_pattern)のk-meansクラスタ数。固定せず画像の色分布から
+  # 自動推定する(単色に近い個体は小さいk、複雑な斑紋の個体は大きいkになる)。
+  # pattern_k を指定すればこの範囲内にクリップした固定値として使われる。
+  pattern_k_min: 2
+  pattern_k_max: 8
+
+object_extraction:
+  min_area_ratio: 0.02          # 画像全体に対する最小面積比(ノイズ除去用)
+  auto_separate_support: true    # 昆虫/支持体の自動分離を行うか
+  border_band_ratio: 0.08        # 支持体候補のサンプリングに使う「画像端」の帯の幅(短辺に対する比率)
+  min_core_width_ratio: 0.12     # [太さベース分離(既定・最優先)] 昆虫本体とみなす最小の太さ(短辺に対する比率、直径の目安)。支持体(脚・枝)がこれより細ければ、同色・広い接触帯でも分離できる
+  auto_seed_min_area_ratio: 0.02 # 太さベース分離の結果が前景全体に対しこの比率未満なら失敗とみなし色ベースへフォールバック
+  min_hole_area_ratio: 0.0002    # 内部の穴のうちこの比率未満はノイズとみなして埋める。0.0015→0.0002に緩め、
+                                  # 昆虫本体の模様に由来する細かい穴を残しやすくした(旧実装の「線画」寄りの見た目に近づける)
+  color_tolerance: 35.0          # [色ベース分離(太さベース失敗時のフォールバック)] 支持体とみなす色距離のしきい値(大きいほど広い色範囲を除去)
+  smoothing_kernel_size: 5        # 9→5に縮小。クロージングが強すぎて細かいノッチ・穴まで塗りつぶすのを防ぐ
+
+vectorization:
+  edge_method: "canny_adaptive"  # canny_adaptive | binary_contour
+  simplify_tolerance: 1.5          # cv2.approxPolyDP のepsilon係数
+  min_contour_points: 5
+  stroke_width: 1.0
+
+# Stage 3.5(任意): 部位別分割(本体/脚・触角・翅等)。GUIから「部位別に分割」を
+# 実行した場合のみ使われる(通常のパイプラインには含まれない)。
+part_segmentation:
+  min_arc_length_ratio: 0.03    # これ未満の骨格片は独立した付属肢とみなさない
+  core_thickness_ratio: 0.10    # これ以上の太さの骨格片は本体コアとみなす(継ぎ目信号による例外あり)
+  joint_cluster_ratio: 0.015    # 関節(分岐点)をまとめる際の膨張比率
+  min_part_area_ratio: 0.001    # これ未満の面積の部位はノイズとみなし本体へ統合
+  use_photometric_seam: true    # 元画像の陰影から関節の"継ぎ目"を検出し、太い脚の分離を補強する
+  seam_top_fraction: 0.3        # 関節候補のうち上位何割を「強い継ぎ目」とみなすか(個体差で要調整)
+
+# Stage3: エッジ抽出エンジン(モード別調整)
+# 昆虫は細い脚・触角・剛毛など微細構造が多いため、微細スケールを重視。
+# Stage2でハイライトを既に抑制しているため、勾配ブーストは標準程度に留める。
+edge_extraction:
+  canny_sigmas: [0.0, 1.0, 2.0]
+  canny_auto_sigma: 0.33
+  include_color_channels: true
+  gradient_boost_weight: 0.3
+  gradient_clip_percentile: 99.0
+
+line_organization:
+  engine: curve_consolidation   # [2026-07] Stage4を対応区間ベースの新エンジンに切り替え
+  binarize_threshold: 40
+  gap_close_length: 3
+  gap_close_angles: [0, 45, 90, 135]
+  min_isolated_area: 2
+
+region_extraction:
+  min_area_factor: 20.0
+  simplify_epsilon: 0.8
+  stroke_width: 1.0
