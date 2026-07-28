@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+  <head>
+    <!-- テーマ初期化：ライトモード切り替え時のフラッシュを防ぐ -->
+    <script>
+      (function(){
+        var t=localStorage.getItem('sa-theme');
+        var prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+        if(t==='light'||(t===null&&!prefersDark)){
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>SketchAssist</title>
+    <meta name="description" content="SketchAssist — 研究標本の線画図版作成ツール" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="SketchAssist" />
+    <meta property="og:description" content="SketchAssist — 研究標本の線画図版作成ツール" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SketchAssist" />
+    <meta name="twitter:description" content="SketchAssist — 研究標本の線画図版作成ツール" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
