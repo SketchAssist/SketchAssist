@@ -85,7 +85,9 @@ linux:
   icon: build-resources/icon.png
   category: Graphics
 
-# ── 自動アップデート（スケルトン）────────────────────────────────
+# ── GitHub Releases への配布 ──────────────────────────────────────
+# GH_TOKEN (= GITHUB_TOKEN) が必要。
+# electron-builder がリポジトリを git remote から自動検出する。
 publish:
-  provider: generic
-  url: https://releases.sketchassist.app/updates
+  provider: github
+  releaseType: draft
