@@ -1,0 +1,19 @@
+{
+  "name": "@workspace/electron",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "electron": "^31.7.7",
+    "typescript": "^5.8.3"
+  }
+}
