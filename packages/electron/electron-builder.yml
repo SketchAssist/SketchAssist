@@ -1,6 +1,6 @@
 appId: com.sketchassist.app
 productName: SketchAssist
-copyright: Copyright © 2025 SketchAssist
+copyright: Copyright © 2026 SketchAssist
 
 directories:
   output: release
@@ -30,11 +30,6 @@ extraResources:
     to: renderer
     filter: ["**/*"]
 
-  # Node.js API サーバー
-  - from: ../../artifacts/api-server/dist
-    to: api-server
-    filter: ["**/*"]
-
   # Python サイドカー（PyInstaller --onedir バイナリ）
   # 実行ファイル: resources/sidecar/sidecar(.exe)
   - from: ../../packages/python-sidecar/dist/sidecar
@@ -44,7 +39,10 @@ extraResources:
   # パイプラインファイルのデフォルト（.py / .yaml ソース）
   # 初回起動時に userData/pipeline/ へコピーされる。
   # ユーザーがアプリ内から上書き更新できる編集可能なファイル群。
-  - from: ../../packages/python-sidecar/pipeline
+  # 実体はリポジトリ直下の pipeline/ ディレクトリ(packages/python-sidecar/
+  # 配下ではない。runner.py の探索ロジック[_HERE.parent.parent / "pipeline"]
+  # と一致させること)。
+  - from: ../../pipeline
     to: pipeline-defaults
     filter: ["**/*"]
 
