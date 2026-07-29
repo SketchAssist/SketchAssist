@@ -10,7 +10,7 @@ import {
   type StageType, type PipelineMode, type PipelineNode, type PipelineTree,
 } from "@/lib/pipeline-api";
 import { LassoEditor, type LassoStroke } from "@/components/editor/lasso-editor";
-import { type TextAnnotation } from "@/components/editor/canvas-workspace";
+import { type TextAnnotation, type CanvasWorkspaceHandle } from "@/components/editor/canvas-workspace";
 import { useParams, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { CanvasWorkspace } from "@/components/editor/canvas-workspace";
@@ -217,6 +217,8 @@ export default function Editor() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const videoRef     = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** 手書き修正キャンバスの現在の表示内容をエクスポート時に取り出すための参照 */
+  const canvasWorkspaceRef = useRef<CanvasWorkspaceHandle>(null);
 
   useEffect(() => () => { cameraStream?.getTracks().forEach(t => t.stop()); }, [cameraStream]);
 
@@ -276,6 +278,31 @@ export default function Editor() {
     cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null); setShowCamera(false);
   };
+
+  /**
+   * 「エクスポート」ボタン押下時、手書き修正キャンバスの現在の表示内容を
+   * SVGとして保存してからエクスポート画面へ遷移する。
+   * 画像が読み込まれていない場合(canvasWorkspaceRef側がnullを返す場合)は
+   * 保存せずそのまま遷移する。
+   */
+  const handleExportClick = useCallback(async () => {
+    const composite = canvasWorkspaceRef.current?.exportCorrectedComposite();
+    if (composite) {
+      const { dataUrl, width, height } = composite;
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" ` +
+        `viewBox="0 0 ${width} ${height}">` +
+        `<image x="0" y="0" width="${width}" height="${height}" href="${dataUrl}"/>` +
+        `</svg>`;
+      try {
+        await updateProject.mutateAsync({ id, data: { lineArtSvg: svg, lineArtUrl: dataUrl } });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+      } catch {
+        toast({ title: "手書き修正内容の保存に失敗しました", variant: "destructive" });
+      }
+    }
+    setLocation(`/project/${id}/export`);
+  }, [id, updateProject, queryClient, toast, setLocation]);
 
   const handleDeletePhoto = async () => {
     await updateProject.mutateAsync({ id, data: { imageUrl: "", lineArtUrl: "", lineArtSvg: "", status: "empty" } });
@@ -477,7 +504,7 @@ export default function Editor() {
               {showRightPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </Button>
             <Button size="sm" variant="outline" className="text-xs h-8"
-              onClick={() => setLocation(`/project/${project.id}/export`)}>
+              onClick={handleExportClick}>
               <Download className="w-3.5 h-3.5 mr-2" /> エクスポート
             </Button>
           </div>
@@ -688,6 +715,7 @@ export default function Editor() {
 
                 <div className="flex-1 relative min-h-0">
                   <CanvasWorkspace
+                    ref={canvasWorkspaceRef}
                     project={project}
                     annotations={annotations ?? null}
                     activeTool={activeTool}

@@ -114,6 +114,11 @@ export default function Export() {
                   <CardDescription className="font-mono text-xs">Select vector or raster output format</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/*
+                    PDF/EPS書き出しは未実装(現状生成できるのはSVGのみ)。
+                    選択自体をできないようにし、拡張子と中身が食い違う
+                    ファイルを生成しないようにする。実装され次第disabledを外すこと。
+                  */}
                   <RadioGroup value={format} onValueChange={(v) => setFormat(v as ExportOptionsFormat)} className="grid grid-cols-3 gap-4">
                     <div>
                       <RadioGroupItem value="svg" id="svg" className="peer sr-only" />
@@ -127,25 +132,25 @@ export default function Export() {
                       </Label>
                     </div>
                     <div>
-                      <RadioGroupItem value="pdf" id="pdf" className="peer sr-only" />
+                      <RadioGroupItem value="pdf" id="pdf" className="peer sr-only" disabled />
                       <Label
                         htmlFor="pdf"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer font-mono"
+                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 opacity-40 cursor-not-allowed font-mono"
                       >
                         <FileText className="mb-3 h-6 w-6" />
                         PDF
-                        <span className="text-[9px] mt-1 text-muted-foreground text-center">Print Document</span>
+                        <span className="text-[9px] mt-1 text-muted-foreground text-center">近日対応予定</span>
                       </Label>
                     </div>
                     <div>
-                      <RadioGroupItem value="eps" id="eps" className="peer sr-only" />
+                      <RadioGroupItem value="eps" id="eps" className="peer sr-only" disabled />
                       <Label
                         htmlFor="eps"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer font-mono"
+                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 opacity-40 cursor-not-allowed font-mono"
                       >
                         <FileText className="mb-3 h-6 w-6" />
                         EPS
-                        <span className="text-[9px] mt-1 text-muted-foreground text-center">Encapsulated PostScript</span>
+                        <span className="text-[9px] mt-1 text-muted-foreground text-center">近日対応予定</span>
                       </Label>
                     </div>
                   </RadioGroup>
@@ -208,16 +213,31 @@ export default function Export() {
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center items-center text-center p-6 bg-accent/10 m-4 rounded border border-dashed border-border mt-0">
                   <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
-                  <p className="font-mono text-sm">Target Resolution: {project.imageUrl ? '8000x6000' : 'Unknown'}</p>
-                  <p className="font-mono text-xs text-muted-foreground mt-1">Estimated Size: ~2.4 MB</p>
+                  {/* 実データがない項目を架空の数値で埋めない。解像度・容量は
+                      出力後まで確定しないため、分かっている事実(フォーマット・
+                      DPI設定)のみを表示する。 */}
+                  <p className="font-mono text-sm">Format: {format.toUpperCase()} @ {dpi} DPI</p>
+                  <p className="font-mono text-xs text-muted-foreground mt-1">
+                    {project.lineArtSvg
+                      ? "Line art is ready to export."
+                      : "Line art has not been generated yet."}
+                  </p>
                 </CardContent>
               </Card>
+
+              {!project.lineArtSvg && (
+                <p className="font-mono text-xs text-destructive text-center">
+                  まだ書き出し用データがありません。エディター画面で写真を読み込み、
+                  「エクスポート」ボタンを押すと、その時点の手書き修正キャンバスの内容が
+                  自動的に保存されます(先にエディターへ戻って画像を読み込んでください)。
+                </p>
+              )}
 
               <Button 
                 size="lg" 
                 className="w-full font-mono text-base h-14 bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleExport}
-                disabled={exportProject.isPending}
+                disabled={exportProject.isPending || !project.lineArtSvg || format !== "svg"}
               >
                 {exportProject.isPending ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
