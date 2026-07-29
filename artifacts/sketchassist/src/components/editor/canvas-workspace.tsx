@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { type Project, type AnnotationData, type Stroke, StrokeTool, useSaveAnnotations } from "@/lib/use-projects";
 import { X, Pencil } from "lucide-react";
 import type { MaskTool } from "@/lib/mask-editor";
@@ -83,7 +83,24 @@ interface CanvasWorkspaceProps {
 
 export type TextAnnotation = NonNullable<AnnotationData["textAnnotations"]>[number];
 
-export function CanvasWorkspace({
+/**
+ * 親コンポーネント(editor.tsx)がref経由で呼び出せる操作。
+ * エクスポート時に「今キャンバスに表示されている手書き修正の内容」を
+ * そのままラスタとして取り出すために追加した(export.tsx へ遷移する前に
+ * editor.tsx がこれを呼び、project.lineArtSvg / lineArtUrl へ保存する)。
+ */
+export interface CanvasWorkspaceHandle {
+  /**
+   * 手書き修正タブ(corrected)の現在の表示状態(背景の表示/非表示・
+   * 前景ストロークの表示/非表示を含む)をそのまま1枚のラスタ画像に
+   * 合成し、PNG data URL とその画素サイズを返す。
+   * 画像が読み込まれていない場合は null。
+   */
+  exportCorrectedComposite: () => { dataUrl: string; width: number; height: number } | null;
+}
+
+export const CanvasWorkspace = forwardRef<CanvasWorkspaceHandle, CanvasWorkspaceProps>(
+  function CanvasWorkspace({
   project, annotations, activeTool, currentColor, currentWidth, undoTrigger,
   onScaleMeasured, onScaleAnnotationUndone, clearRegionTrigger = 0, viewTab = null, intermediateImageUrl,
   correctionBgUrl, correctionDraftUrl, correctionBgVisible = true, correctionDraftVisible = true, correctionResetKey = 0,
@@ -92,7 +109,7 @@ export function CanvasWorkspace({
   onMaskSeedClick, onMaskBrushPoint, onMaskBrushEnd, onMaskFloodDelete, onMaskFloodKeep,
   onMaskLassoPoint, onMaskLassoClose,
   onDimensionsChange, pendingAnnotations, onPendingAnnotationsApplied,
-}: CanvasWorkspaceProps) {
+}: CanvasWorkspaceProps, ref) {
   const isViewMode = viewTab !== null;
   const containerRef      = useRef<HTMLDivElement>(null);
   const baseCanvasRef     = useRef<HTMLCanvasElement>(null);
@@ -115,6 +132,40 @@ export function CanvasWorkspace({
   const [edgeMapVersion, setEdgeMapVersion] = useState(0);
 
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
+  // ── エクスポート用: 現在の「手書き修正」表示状態をラスタ合成して返す ──
+  // 表示に使っているCSS opacity切り替えとは独立に、実際にpngへ焼き込む
+  // 必要があるため、baseCanvas(背景。correctionBgVisibleに応じて中身が
+  // 変わる) と annotationCanvas(下書き+ストローク。correctionDraftVisible
+  // で表示/非表示) を、画面表示と同じ条件で1枚のoffscreen canvasに合成する。
+  useImperativeHandle(ref, () => ({
+    exportCorrectedComposite: () => {
+      const base = baseCanvasRef.current;
+      const annotation = annotationCanvasRef.current;
+      if (!base || dimensions.width === 0 || dimensions.height === 0) return null;
+
+      const out = document.createElement("canvas");
+      out.width = dimensions.width;
+      out.height = dimensions.height;
+      const ctx = out.getContext("2d");
+      if (!ctx) return null;
+
+      // 背景: 白で塗ってから、表示中であれば base canvas の内容を重ねる
+      // (correctionBgVisible=false のときは base canvas 自体が透明/白に
+      // クリアされているため、そのまま重ねて問題ない)。
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.drawImage(base, 0, 0);
+
+      // 前景(下書き+手書きストローク): correctionDraftVisible が true の
+      // ときのみ、画面表示と同じ条件で重ねる。
+      if (correctionDraftVisible && annotation) {
+        ctx.drawImage(annotation, 0, 0);
+      }
+
+      return { dataUrl: out.toDataURL("image/png"), width: out.width, height: out.height };
+    },
+  }), [dimensions.width, dimensions.height, correctionDraftVisible]);
   const saveAnnotations = useSaveAnnotations();
 
   const [isDrawing,      setIsDrawing]      = useState(false);
@@ -1512,4 +1563,5 @@ export function CanvasWorkspace({
       )}
     </div>
   );
-}
+  },
+);
