@@ -17,6 +17,7 @@ import * as http from "http";
 import * as net from "net";
 import { registerModelIPCHandlers } from "./ipc/model-manager";
 import { registerSyncHandlers } from "./ipc/sync-handlers";
+import { registerSidecarPortIPC } from "./sidecar-port-bridge";
 import {
   registerSidecarIPCHandlers,
   setSidecarStatus,
@@ -100,7 +101,7 @@ function copyDirSync(src: string, dest: string): void {
  * userData/pipeline/ を初期化する。
  *
  * - 初回起動時: ソースから pipeline/ をコピー
- *   - dev: packages/python-sidecar/pipeline/
+ *   - dev: <repo root>/pipeline/
  *   - prod: extraResources/pipeline-defaults/
  * - 2 回目以降: 既存の userData/pipeline/ をそのまま使う
  *
@@ -112,7 +113,7 @@ async function initPipelineDir(): Promise<string> {
   if (!fs.existsSync(userPipelineDir)) {
     // ── ソースを決定 ──────────────────────────────────────────────
     const src = isDev
-      ? path.resolve(__dirname, "../../../packages/python-sidecar/pipeline")
+      ? path.resolve(__dirname, "../../../pipeline")
       : path.join(process.resourcesPath, "pipeline-defaults");
 
     console.log(`[pipeline-dir] 初回セットアップ: ${src} → ${userPipelineDir}`);
@@ -307,6 +308,7 @@ app.whenReady().then(async () => {
   registerModelIPCHandlers();
   registerSidecarIPCHandlers();
   registerRestartSidecarIPC();
+  registerSidecarPortIPC(() => sidecarPort);
 
   // 1. pipeline/ ディレクトリを初期化
   pipelineDir = await initPipelineDir();

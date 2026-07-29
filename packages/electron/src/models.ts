@@ -15,7 +15,16 @@ export interface ModelDefinition {
   sizeLabel: string;
   /** ダウンロード元 URL（将来 HuggingFace Hub 等に差し替え） */
   downloadUrl: string;
-  /** SHA-256 チェックサム（将来設定） */
+  /**
+   * SHA-256 チェックサム。
+   * 設定されている場合、ダウンロード後に model-manager.ts が検証し、
+   * 一致しなければファイルを破棄してエラーとする(改ざん・破損対策)。
+   * downloadUrl を持つモデル(sam2-tiny / clip-nano)は、公開リリース前に
+   * 実際のハッシュ値を確定させ、null のままにしないこと。
+   * null のまま公開すると、ダウンロードされたファイルの整合性を
+   * 検証しないままロードすることになり、サプライチェーン攻撃・
+   * 配信元の改ざんに対して無防備になる。
+   */
   sha256: string | null;
   /** userData/models/ 以下のファイル名 */
   filename: string;

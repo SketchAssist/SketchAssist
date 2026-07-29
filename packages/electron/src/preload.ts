@@ -15,6 +15,7 @@
  */
 
 import { contextBridge, ipcRenderer } from "electron";
+import { exposeSidecarPortBridge } from "./sidecar-port-bridge";
 
 // ── 型定義 ────────────────────────────────────────────────────────
 
@@ -61,3 +62,4 @@ const electronAPI = {
 };
 
 contextBridge.exposeInMainWorld("electronAPI", electronAPI);
+exposeSidecarPortBridge();
