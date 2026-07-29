@@ -2,6 +2,16 @@
  * local-db.ts
  * localStorage ベースのプロジェクト・アノテーションストア。
  * api-server / @workspace/api-client-react の代替として機能する。
+ *
+ * ── pipeline-api.ts との役割分担 ──
+ * このファイル(および use-projects.ts)は「プロジェクトのメタデータ・
+ * 最終成果物(手書き修正後のラインアート・エクスポート設定)」を扱う。
+ * 一方 pipeline-api.ts は「Python サイドカーが実行する画像処理パイプライン
+ * (Stage0〜Stage3)の実行状態・中間プレビュー画像」を扱う。
+ *
+ * Project.lineArtSvg は、エディター画面の「エクスポート」ボタン押下時に
+ * 手書き修正キャンバスの表示内容をSVGとして保存したもの(editor.tsx の
+ * handleExportClick 参照)。
  */
 
 // ── 型定義 ─────────────────────────────────────────────────────────────────

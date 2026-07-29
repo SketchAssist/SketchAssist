@@ -166,7 +166,23 @@ export function useSaveAnnotations() {
   });
 }
 
-/** クライアントサイド SVG エクスポート（api-server の useExportProject 代替）*/
+/**
+ * クライアントサイド SVG エクスポート（api-server の useExportProject 代替）
+ *
+ * 現状、実際に生成できるのは SVG のみ(project.lineArtSvg をそのまま
+ * Blob化するだけ)。PDF / EPS への変換は未実装であり、ここで安易に
+ * SVG の中身を .pdf / .eps という拡張子で返すと、開けない(あるいは
+ * 中身と拡張子が一致しない)ファイルを生成してしまう。そのため
+ * format !== "svg" の場合は明示的にエラーとする。
+ *
+ * project.lineArtSvg は、エディター画面の「エクスポート」ボタンを押した
+ * 時点で、手書き修正キャンバスの表示内容をSVGとして自動的に保存される
+ * (editor.tsx の handleExportClick を参照)。まだ一度もエディターで
+ * エクスポートを実行していない場合は project.lineArtSvg が空のままなので、
+ * その場合は「SVGデータがまだ生成されていません」エラーになるのが正しい
+ * 挙動。export.tsx 側では、この状態をエラー任せにせず、事前に画面上で
+ * 分かるように表示すること。
+ */
 export function useExportProject() {
   return useMutation({
     mutationFn: async ({
@@ -179,8 +195,15 @@ export function useExportProject() {
       const project = dbGetProject(id);
       if (!project) throw new Error(`Project ${id} not found`);
 
+      if (data.format !== "svg") {
+        throw new Error(
+          `${data.format.toUpperCase()} 書き出しは現在のバージョンでは未対応です。` +
+          "SVGを選択してください。"
+        );
+      }
+
       const svg = project.lineArtSvg;
-      if (!svg) throw new Error("SVG データがまだ生成されていません。パイプラインを完了してください。");
+      if (!svg) throw new Error("SVG データがまだ生成されていません。エディター画面で「エクスポート」ボタンを押してください。");
 
       const blob = new Blob([svg], { type: "image/svg+xml" });
       const fileUrl = URL.createObjectURL(blob);

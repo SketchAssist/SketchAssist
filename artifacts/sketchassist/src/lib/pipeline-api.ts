@@ -90,13 +90,38 @@ function sidecarBase(): string {
   return (import.meta.env["VITE_SIDECAR_URL"] as string | undefined) ?? "/sidecar";
 }
 
+/**
+ * Electron 環境(window.sketchAssistSidecar が存在する場合)では、
+ * サイドカーは起動のたびに動的なポートで待ち受けているため、
+ * preload 経由で実際のポート番号を問い合わせてベースURLを組み立てる。
+ * それ以外(ブラウザ/Vite dev server 等)では、従来通り sidecarBase() を使う。
+ * 一度解決した結果は使い回す(毎リクエストごとにIPC往復しないため)。
+ */
+let cachedSidecarBasePromise: Promise<string> | null = null;
+
+async function resolveSidecarBase(): Promise<string> {
+  if (cachedSidecarBasePromise) return cachedSidecarBasePromise;
+
+  const bridge = (window as unknown as {
+    sketchAssistSidecar?: { getPort: () => Promise<number> };
+  }).sketchAssistSidecar;
+
+  cachedSidecarBasePromise = bridge
+    ? bridge.getPort()
+        .then((port) => `http://127.0.0.1:${port}`)
+        .catch(() => sidecarBase())
+    : Promise.resolve(sidecarBase());
+
+  return cachedSidecarBasePromise;
+}
+
 /** projectId (整数) → サイドカーが使う project_id 文字列 */
 function toSidecarProjectId(projectId: number): string {
   return `proj_${projectId}`;
 }
 
 async function sidecarFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${sidecarBase()}${path}`, {
+  const res = await fetch(`${await resolveSidecarBase()}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
