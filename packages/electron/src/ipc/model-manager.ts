@@ -9,7 +9,19 @@ import * as fs from "fs";
 import * as path from "path";
 import * as https from "https";
 import * as http from "http";
+import * as crypto from "crypto";
 import { MODEL_REGISTRY, type ModelDefinition } from "../models";
+
+// ダウンロードしたファイルの SHA-256 を計算する。
+function computeSha256(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
+}
 
 // userData/models/
 function getModelsDir(): string {
@@ -85,9 +97,33 @@ export function registerModelIPCHandlers(): void {
           res.pipe(file);
           file.on("finish", () => {
             file.close(() => {
-              fs.renameSync(tmpPath, destPath);
-              sendProgress(100);
-              resolve();
+              // チェックサムが登録されているモデルは、renameSync(=正式採用)
+              // 前に必ず検証する。未登録(null)の場合は検証をスキップするが、
+              // これは経過措置であり、公開リリース前に models.ts 側で
+              // 実際のハッシュ値を設定すべき(models.ts のコメント参照)。
+              const verifyAndFinalize = async () => {
+                try {
+                  if (def.sha256) {
+                    const actual = await computeSha256(tmpPath);
+                    if (actual.toLowerCase() !== def.sha256.toLowerCase()) {
+                      fs.unlink(tmpPath, () => {});
+                      reject(new Error(
+                        `モデル "${modelId}" のチェックサムが一致しません。` +
+                        `ダウンロード元が改ざんされたか、ファイルが破損している可能性があります。` +
+                        `(expected=${def.sha256}, actual=${actual})`
+                      ));
+                      return;
+                    }
+                  }
+                  fs.renameSync(tmpPath, destPath);
+                  sendProgress(100);
+                  resolve();
+                } catch (err) {
+                  fs.unlink(tmpPath, () => {});
+                  reject(err as Error);
+                }
+              };
+              void verifyAndFinalize();
             });
           });
           file.on("error", (err) => {
