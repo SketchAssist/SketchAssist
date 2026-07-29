@@ -84,16 +84,25 @@ from pydantic import BaseModel
 
 from orchestrator import Orchestrator  # type: ignore[import]
 
+# ── バージョン ─────────────────────────────────────────────────────
+# アプリ全体(ルート/electron/フロントエンド)の package.json と揃えること。
+# ここでの二重定義(FastAPIのversion=とhealthエンドポイントの両方)を避けるため、
+# この定数1箇所だけを更新すればよいようにしている。
+__version__ = "1.0.0"
+
 # ── アプリ設定 ─────────────────────────────────────────────────────
 app = FastAPI(
     title="SketchAssist Pipeline Sidecar",
-    version="1.0.0",
+    version=__version__,
     description="Python 画像処理パイプラインへの HTTP インターフェース",
 )
 
+# サイドカーはローカルホスト上でのみ待ち受ける前提のため、CORSも
+# localhost/127.0.0.1 (任意ポート)に限定する。"*" は指定しない
+# ("*" を含めると個別オリジンの列挙が無意味になり、意図が不明瞭になるため)。
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:*", "http://127.0.0.1:*", "*"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -167,7 +176,7 @@ class BranchStageRequest(BaseModel):
 def health():
     return {
         "status": "ok",
-        "version": "1.0.0",
+        "version": __version__,
         "pipeline_dir": str(_PIPELINE_DIR),
     }
 
