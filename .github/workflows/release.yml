@@ -1,20 +1,14 @@
 name: Release
 
-# タグ (v1.0.0 のような "v" で始まるもの) をpushしたときにだけ実行される。
-# 通常のコミットやプルリクエストでは実行されない。
 on:
   push:
     tags:
       - "v*"
 
-# electron-builder が GitHub Releases の作成・アップロードを行うために必要な権限。
 permissions:
   contents: write
 
 jobs:
-  # ── Linux ──────────────────────────────────────────────────────
-  # 3プラットフォームを並列ではなく順番(linux → mac → windows)に実行し、
-  # 同じドラフトリリースへの同時書き込みによる競合を避ける。
   release-linux:
     runs-on: ubuntu-latest
     steps:
@@ -56,7 +50,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ── macOS ──────────────────────────────────────────────────────
   release-mac:
     needs: release-linux
     runs-on: macos-latest
@@ -99,7 +92,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ── Windows ────────────────────────────────────────────────────
   release-windows:
     needs: release-mac
     runs-on: windows-latest
