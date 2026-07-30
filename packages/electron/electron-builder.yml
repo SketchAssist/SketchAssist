@@ -86,6 +86,7 @@ linux:
 # ── GitHub Releases への配布 ──────────────────────────────────────
 # GH_TOKEN (= GITHUB_TOKEN) が必要。
 # electron-builder がリポジトリを git remote から自動検出する。
+
 publish:
   provider: github
-  releaseType: draft
+  releaseType: release
